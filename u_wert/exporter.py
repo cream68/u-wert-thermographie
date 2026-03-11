@@ -1,6 +1,9 @@
-import subprocess
-import tempfile
-from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import urlopen
+
+
+LATEX_ONLINE_COMPILE_URL = "https://latexonline.cc/compile"
 
 
 def latex_escape(text: str) -> str:
@@ -100,30 +103,31 @@ U &= {U.magnitude:.3f}\\,\\frac{{\\mathrm{{W}}}}{{\\mathrm{{m^2K}}}} \\\\
 
 def compile_latex_to_pdf_bytes(latex_source: str):
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_path = Path(tmpdir)
-            tex_path = tmp_path / "report.tex"
-            pdf_path = tmp_path / "report.pdf"
-            tex_path.write_text(latex_source, encoding="utf-8")
-            subprocess.run(
-                [
-                    "pdflatex",
-                    "-interaction=nonstopmode",
-                    "-halt-on-error",
-                    "report.tex",
-                ],
-                cwd=tmpdir,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            if not pdf_path.exists():
-                return None, "PDF wurde nicht erzeugt."
-            return pdf_path.read_bytes(), ""
-    except FileNotFoundError:
-        return None, "pdflatex nicht gefunden. Bitte MiKTeX/TeX Live installieren."
-    except subprocess.CalledProcessError as exc:
-        details = (exc.stderr or exc.stdout or "").strip()
+        query = urlencode(
+            {
+                "text": latex_source,
+                "command": "pdflatex",
+                "download": "report.pdf",
+                "force": "true",
+            }
+        )
+        url = f"{LATEX_ONLINE_COMPILE_URL}?{query}"
+
+        with urlopen(url, timeout=45) as response:
+            pdf_bytes = response.read()
+            content_type = (response.headers.get("Content-Type") or "").lower()
+
+        if "application/pdf" not in content_type and not pdf_bytes.startswith(b"%PDF"):
+            details = pdf_bytes.decode("utf-8", errors="replace").strip()
+            if len(details) > 1200:
+                details = details[:1200] + " ..."
+            return None, f"LaTeX-Online lieferte keine PDF: {details}"
+
+        return pdf_bytes, ""
+    except HTTPError as exc:
+        details = exc.read().decode("utf-8", errors="replace").strip()
         if len(details) > 1200:
             details = details[:1200] + " ..."
-        return None, f"LaTeX-Kompilierung fehlgeschlagen: {details}"
+        return None, f"LaTeX-Online Fehler ({exc.code}): {details}"
+    except URLError as exc:
+        return None, f"LaTeX-Online nicht erreichbar: {exc.reason}"
