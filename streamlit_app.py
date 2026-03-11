@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import date
+import hashlib
 import re
 
 from u_wert.calculations import calculate_norm, calculate_rs_from_u, calculate_u
@@ -21,6 +22,9 @@ def init_state() -> None:
         "u_target_value": 0.35,
         "theta_i_norm_c": 20.0,
         "theta_e_norm_c": -5.0,
+        "pdf_report_bytes": None,
+        "pdf_report_error": "",
+        "pdf_report_source_hash": "",
     }
     if "theta_e_mess_c" not in st.session_state and "theta_a_mess_c" in st.session_state:
         st.session_state.theta_e_mess_c = st.session_state.theta_a_mess_c
@@ -191,14 +195,25 @@ else:
         theta_surface_norm=theta_surface_norm,
     )
 
-    pdf_bytes, pdf_error = compile_latex_to_pdf_bytes(latex_report)
-    if pdf_bytes is not None:
+    report_hash = hashlib.sha256(latex_report.encode("utf-8")).hexdigest()
+    if st.session_state.pdf_report_source_hash != report_hash:
+        st.session_state.pdf_report_source_hash = report_hash
+        st.session_state.pdf_report_bytes = None
+        st.session_state.pdf_report_error = ""
+
+    if st.button("PDF erzeugen (LaTeX-Online)", type="primary"):
+        with st.spinner("Erzeuge PDF ..."):
+            pdf_bytes, pdf_error = compile_latex_to_pdf_bytes(latex_report)
+        st.session_state.pdf_report_bytes = pdf_bytes
+        st.session_state.pdf_report_error = pdf_error
+
+    if st.session_state.pdf_report_bytes is not None:
         export_name = f"{date.today().isoformat()} U-Wert {safe_filename_part(component_name)}.pdf"
         st.download_button(
-            "PDF Export (.pdf)",
-            data=pdf_bytes,
+            "PDF herunterladen (.pdf)",
+            data=st.session_state.pdf_report_bytes,
             file_name=export_name,
             mime="application/pdf",
         )
-    else:
-        st.warning(pdf_error)
+    elif st.session_state.pdf_report_error:
+        st.warning(st.session_state.pdf_report_error)

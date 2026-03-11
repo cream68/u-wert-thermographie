@@ -13,6 +13,8 @@ def clean_latex_output(latex_code: str) -> str:
         "degree\\_Celsius": r"^\circ\mathrm{C}",
         "degree_{Celsius}": r"^\circ\mathrm{C}",
         "degreeCelsius": r"^\circ\mathrm{C}",
+        "\\mathrm{°C}": r"^\circ\mathrm{C}",
+        "°C": r"^\circ\mathrm{C}",
         "\\mathrm{�C}": r"^\circ\mathrm{C}",
         "�C": r"^\circ\mathrm{C}",
         r"\theta_{i_{norm}}": r"\theta_{i,norm}",
