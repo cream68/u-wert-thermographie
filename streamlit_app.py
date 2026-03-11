@@ -2,8 +2,8 @@ import streamlit as st
 from datetime import date
 import re
 
-from calculations import calculate_norm, calculate_rs_from_u, calculate_u
-from exporter import build_latex_report, compile_latex_to_pdf_bytes
+from u_wert.calculations import calculate_norm, calculate_rs_from_u, calculate_u
+from u_wert.exporter import build_latex_report, compile_latex_to_pdf_bytes
 
 
 def init_state() -> None:
@@ -50,7 +50,7 @@ with st.sidebar:
     st.divider()
 
     with st.popover("Info: Rsi/Rse"):
-        st.image("Rsi_Rse.png", caption="Rsi/Rse (Oberflaechenwiderstaende)")
+        st.image("u_wert/Rsi_Rse.png", caption="Rsi/Rse (Oberflaechenwiderstaende)")
 
     with st.popover("Info: Herleitung U"):
         if messung == "innen":
